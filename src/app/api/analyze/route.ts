@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { buildAnalysisPrompt } from '@/lib/ai/prompt';
 import type { AIAnalysisResult } from '@/lib/ai/types';
 
-const anthropic = new Anthropic();
+function getClient() {
+  return new OpenAI();
+}
 
 interface BatchRequest {
   messages: { index: number; sender: string; content: string }[];
@@ -20,16 +22,13 @@ export async function POST(request: NextRequest) {
 
     const prompt = buildAnalysisPrompt(messages);
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await getClient().chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const text = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
+    const text = response.choices[0]?.message?.content ?? '';
 
     // JSON 파싱 (```json ... ``` 래핑 제거)
     const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
